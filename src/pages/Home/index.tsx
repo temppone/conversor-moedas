@@ -1,104 +1,96 @@
-import { yupResolver } from '@hookform/resolvers/yup'
-import React, { useEffect, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import * as yup from 'yup'
-import { ptShort } from 'yup-locale-pt'
-import { number, object } from 'yup/lib/locale'
-import { GET_RATES } from '../../api/awesomeApi'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
-import PageHeader from '../../components/PageHeader'
-import Select from '../../components/Select'
-import useFetch from '../../Hooks/useFetach'
-import { ConvertForm, HomeContainer, ResultContainer } from './styles'
+import { yupResolver } from "@hookform/resolvers/yup";
+import React, { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import * as yup from "yup";
+import { ptShort } from "yup-locale-pt";
+import { GET_RATES } from "../../api/awesomeApi";
+import Button from "../../components/Button";
+import Input from "../../components/Input";
+import PageHeader from "../../components/PageHeader";
+import Select from "../../components/Select";
+import useFetch from "../../Hooks/useFetch";
+import { getCurrentDate } from "../../utils/getActualDate";
+import { ConvertForm, HomeContainer, ResultContainer } from "./styles";
 
 const currenciesAvailable = {
-    'USD': ['EUR', 'BRL'],
-    'EUR': ['USD', 'BRL'],
-    'BRL': ['USD', 'EUR'],
-}
+    USD: ["EUR", "BRL"],
+    EUR: ["USD", "BRL"],
+    BRL: ["USD", "EUR"],
+};
 
 interface IReponseApi {
-    "code": string,
-    "codein": string,
-    "name": string,
-    "high": string,
-    "low": string,
-    "varBid": string,
-    "pctChange": string,
-    "bid": string,
-    "ask": string,
-    "timestamp": string,
-    "create_date": string,
+    code: string;
+    codein: string;
+    name: string;
+    high: string;
+    low: string;
+    varBid: string;
+    pctChange: string;
+    bid: string;
+    ask: string;
+    timestamp: string;
+    create_date: string;
 }
 
+export interface IResponseApiData {
+    [key: string]: IReponseApi;
+}
 
 interface IFormData {
-    valueToConvert: number;
+    valueToConvert: string;
     currency: keyof typeof currenciesAvailable;
 }
 
-interface IConvertedValue {
-    code: string,
-    value: number | string
-}
-
-
 const Home = () => {
     const { request, loading, error } = useFetch();
-    const [results, setResults] = useState<IReponseApi[]>([]);
-    const [convertedValues, setConvertedValues] =
-        useState<IConvertedValue[]>([]);
     const [showResult, setShowResult] = useState(false);
+    const [resultData, setResultData] = useState({} as IResponseApiData);
 
     yup.setLocale(ptShort);
 
     const schema = yup.object().shape({
-        valueToConvert: yup.number().required('O valor é obrigatório'),
-        currency: yup.string().required('A moeda é obrigatória')
+        valueToConvert: yup.string().required("O valor é obrigatório"),
+        currency: yup.string().required("A moeda é obrigatória"),
     });
 
     const {
         handleSubmit,
         control,
-        setValue,
         setError,
+        getValues,
         formState: { errors },
     } = useForm({
         resolver: yupResolver(schema),
     });
 
     const getConvertedValues = async (data: IFormData) => {
-        setResults([]);
-        setConvertedValues([]);
+        console.log(data.currency)
+        if (Number(data.currency) === 0) {
+            setError("currency", { message: "A moeda é obrigatória" });
+            return;
+        }
+
         const selectedCurrencyAvailable = currenciesAvailable[data.currency];
         const { response } = await request(
-            GET_RATES(data.currency,
+            GET_RATES(
+                data.currency,
                 selectedCurrencyAvailable[0],
                 selectedCurrencyAvailable[1]
-            ));
+            )
+        );
 
-        Object.keys(response.data).forEach(key => {
-            setResults(prevState => [...prevState, response.data[key]]);
-        });
+        setResultData(response.data);
 
-        results.map((item: IReponseApi) => {
-            const value = (data.valueToConvert * Number(item.bid));
-            setConvertedValues(
-                prevState => [
-                    ...prevState,
-                    { code: item.code, value }
-                ]
-            );
-        });
+        setShowResult(true);
 
-        if (results.length > 0) {
-            setShowResult(true);
+        if (error) {
+            setShowResult(false);
+            setError("valueToConvert", { message: "O valor não pode ser convertido" });
         }
     };
 
-    const onSubmit = (data: IFormData) => {
-        getConvertedValues(data);
+    const onSubmit = async (data: IFormData) => {
+        await getConvertedValues(data);
     };
 
     return (
@@ -116,7 +108,7 @@ const Home = () => {
                             label="Valor"
                             onBlur={onBlur}
                             onChange={onChange}
-                            value={Number(value) || ''}
+                            value={value || ""}
                             inputError={errors?.valueToConvert?.message}
                             placeholder="0,00"
                         />
@@ -128,21 +120,19 @@ const Home = () => {
                     name="currency"
                     render={({ field: { onChange, onBlur, value } }) => (
                         <Select
-                            options={
-                                Object.keys(currenciesAvailable)
-                                    .map((currency) => ({
-                                        label: currency,
-                                        value: currency,
-                                    }))}
+                            label="Moeda"
+                            options={Object.keys(currenciesAvailable).map((currency) => ({
+                                label: currency,
+                                value: currency,
+                            }))}
                             onChange={onChange}
                             onBlur={onBlur}
-                            value={value || ''}
-                            id='currency'
-                            name='currency'
+                            value={value || ""}
+                            id="currency"
+                            name="currency"
                             inputError={errors?.currency?.message}
                             placeholder="Selecione a moeda"
                         />
-
                     )}
                 />
 
@@ -155,19 +145,24 @@ const Home = () => {
                         title="Resultado da conversão"
                         caption="Resultado da conversão - Cotação do dia"
                     />
-                    <Input label="Data da consulta" inputError="" disabled />
 
-                    {convertedValues?.map((item: IConvertedValue) => (
-                        <Input
-                            label={item.code}
-                            value={Number(item.value).toFixed(2)}
-                            inputError=""
-                            disabled />
-                    ))}
+                    <Input label="Data da consulta" inputError="" disabled value={getCurrentDate("/")} />
+
+                    {Object.keys(resultData).map((item) => {
+                        const value = getValues('valueToConvert') * +resultData[item].bid;
+                        return (
+                            <Input
+                                label={resultData[item].code}
+                                value={value.toFixed(2)}
+                                inputError=""
+                                disabled
+                            />
+                        );
+                    })}
                 </ResultContainer>
             )}
         </HomeContainer>
-    )
-}
+    );
+};
 
-export default Home
+export default Home;

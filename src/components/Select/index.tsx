@@ -1,9 +1,11 @@
 import React from 'react'
+import { InputWarning } from '../Input/styles'
 import { SelectContainer, SelectInput, SelectOption } from './styles'
 
 interface ISelect extends React.SelectHTMLAttributes<HTMLSelectElement> {
     options: IOption[];
     inputError?: string;
+    label: string;
 }
 
 interface IOption {
@@ -13,10 +15,14 @@ interface IOption {
     name?: string;
 }
 
-const Select = ({ options, inputError, ...props }: ISelect) => {
+const Select = ({ options, inputError, label, ...props }: ISelect) => {
     return (
         <SelectContainer>
+            <label>
+                {label}
+            </label>
             <SelectInput
+                data-cy="select-currency"
                 inputError={inputError}
                 {...props}
             >
@@ -31,6 +37,7 @@ const Select = ({ options, inputError, ...props }: ISelect) => {
                     </SelectOption>
                 ))}
             </SelectInput>
+            <InputWarning>{inputError}</InputWarning>
         </SelectContainer>
     )
 }
