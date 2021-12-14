@@ -32,4 +32,4 @@ yarn cy:run para iniciar no modo headless
 
 ### Demo
 
-Demo [aqui](https://conversor-tempone.netlify.app)
+Demo [aqui](https://tempone-conversor.netlify.app/)
